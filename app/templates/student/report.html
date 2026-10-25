@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}周工作记录 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>周工作记录</h1>
+    <p class="sub">{{ week_label(wk) }} · {{ week_range_label(wk) }}
+      {% if report %}<span class="tag tag-ok">已提交</span>{% else %}<span class="tag tag-warn">未提交</span>{% endif %}
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('student.home') }}">← 返回</a>
+</div>
+
+<section class="card">
+  <form method="post" class="report-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <input type="hidden" name="week" value="{{ wk }}">
+
+    <div class="section-title">每日工作情况 <span class="muted">按上午 / 下午 / 晚上分时段记录，写明论文题目或模块名称</span></div>
+    <div class="daily-grid">
+      {% for d in WEEKDAY_CN[:5] %}
+      {% set field = {'周一':'mon','周二':'tue','周三':'wed','周四':'thu','周五':'fri'}[d] %}
+      <label class="daily-item">
+        <span>{{ d }}</span>
+        <textarea name="{{ d }}" rows="3" placeholder="上午…&#10;下午…&#10;晚上…">{{ report[field] if report else '' }}</textarea>
+      </label>
+      {% endfor %}
+    </div>
+
+    <label class="block-label">
+      <span class="section-title">本周总结</span>
+      <textarea name="summary" rows="4" placeholder="本周完成了哪些事、做到什么程度、有什么结论。">{{ report.summary if report else '' }}</textarea>
+    </label>
+
+    <label class="block-label">
+      <span class="section-title">下周计划</span>
+      <textarea name="next_plan" rows="3" placeholder="下周推进哪几件事，预计到什么程度。">{{ report.next_plan if report else '' }}</textarea>
+    </label>
+
+    {% if is_month_end %}
+    <label class="block-label month-block">
+      <span class="section-title">本月总结 <span class="tag tag-warn">月末必填</span></span>
+      <textarea name="monthly" rows="4" placeholder="本月目标任务、具体完成情况、存在的问题、收获和体验、下月计划。">{{ report.monthly if report else '' }}</textarea>
+    </label>
+    {% endif %}
+
+    <div class="report-actions">
+      <span class="muted">工作简述不少于 {{ min_chars }} 字，需逐日填写周一至周五。</span>
+      <button type="submit" class="btn btn-primary">{{ '更新' if report else '提交' }}工作记录</button>
+    </div>
+  </form>
+</section>
+
+{% if history %}
+<section class="card">
+  <div class="card-head"><h2>历史记录</h2></div>
+  <div class="week-list">
+    {% for h in history %}
+    <details class="week-item">
+      <summary>
+        <span class="wk-label">{{ week_label(h.week_key) }}</span>
+        <span class="wk-range">{{ week_range_label(h.week_key) }}</span>
+        <span class="tag tag-ok">{{ h.word_count }} 字</span>
+      </summary>
+      <div class="week-body">
+        {% for d, field in [('周一','mon'),('周二','tue'),('周三','wed'),('周四','thu'),('周五','fri')] %}
+          {% if h[field] %}
+          <div class="field"><div class="field-label">{{ d }}</div><div class="field-text">{{ h[field] }}</div></div>
+          {% endif %}
+        {% endfor %}
+        <div class="field"><div class="field-label">本周总结</div><div class="field-text">{{ h.summary }}</div></div>
+        <div class="field"><div class="field-label">下周计划</div><div class="field-text">{{ h.next_plan }}</div></div>
+        {% if h.monthly %}
+        <div class="field"><div class="field-label">本月总结</div><div class="field-text">{{ h.monthly }}</div></div>
+        {% endif %}
+        {% if h.comment %}
+        <div class="feedback-done"><div class="field-label">导师评语</div><div class="field-text">{{ h.comment }}</div></div>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+# 数据库与运行时产物
+lab.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.backup-*
+.test_data/
+.libs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# 环境与编辑器
+.env
+.idea/
+.vscode/

@@ -1,0 +1,19 @@
+# 云端部署配置（Render）
+# 生产环境不灌种子数据，首次部署后用 create-admin 建管理员
+
+services:
+  - type: web
+    name: lab532-manager
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py migrate
+    startCommand: python wsgi.py
+    envVars:
+      - key: FLASK_ENV
+        value: prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: HTTPS_ONLY
+        value: "1"
+      - key: PYTHON_VERSION
+        value: 3.11.9

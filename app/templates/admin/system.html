@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}系统状态 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>系统状态</h1>
+    <p class="sub">版本、数据量、备份</p>
+  </div>
+  <div class="week-nav">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">用户管理</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log') }}">审计日志</a>
+  </div>
+</div>
+
+<div class="metric-row">
+  <div class="metric metric-ok">
+    <div class="metric-num metric-text">{{ schema_version }}</div>
+    <div class="metric-label">数据库 Schema 版本</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num metric-text">{{ rule_version }}</div>
+    <div class="metric-label">制度规则版本</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">{{ stats.users }}</div>
+    <div class="metric-label">用户数</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">{{ stats.evaluations }}</div>
+    <div class="metric-label">考评记录</div>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>数据量</h2></div>
+  <table class="table compact">
+    <tbody>
+      {% for k, v in stats.items() %}
+      <tr><td>{{ k }}</td><td class="num">{{ v }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>备份与维护</h2></div>
+  <p class="hint">
+    下载的备份是完整的 SQLite 文件，可直接用 <code class="code">sqlite3</code> 打开查看或恢复。
+    建议每月考评生成后备份一次。
+  </p>
+  <a class="btn btn-primary" href="{{ url_for('admin.export') }}">下载数据库备份</a>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>规则来源</h2></div>
+  <p class="hint">
+    当前所有考评均按 <strong>{{ rule_version }}</strong> 计算，来源：{{ rule_source }}。
+    每条考评记录都保存了 <code class="code">rule_version</code> 和完整的计算快照，
+    即使日后手册更新，历史考评仍可追溯到当时的依据。
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}卫生值日 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>卫生值日</h1>
+    <p class="sub">{{ week_label(wk) }} · {{ week_range_label(wk) }} · 每天 2 人，提前 10 分钟到岗</p>
+  </div>
+  <div class="week-nav">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.duty', week=prev_week) }}">← 上一周</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.duty') }}">本周</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('teacher.duty', week=next_week) }}">下一周 →</a>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>本周排班</h2>
+    <span class="muted">不达标者值日顺延三天</span>
+  </div>
+  <div class="duty-grid">
+    {% for d in days %}
+    <div class="duty-day {{ 'is-today' if d.date == today_date }}">
+      <div class="duty-head">
+        <span class="duty-week">{{ d.date | weekday_cn }}</span>
+        <span class="duty-date">{{ d.date | short_date }}</span>
+      </div>
+      <div class="duty-body">
+        {% for r in d.rows %}
+        <div class="duty-person {{ 'is-done' if r.done }}">
+          <span class="avatar avatar-sm">{{ r.name[0] }}</span>
+          <span class="duty-name">{{ r.name }}</span>
+          {% if r.done %}<span class="tag tag-ok">已完成</span>{% endif %}
+          {% if user.role in ('admin','teacher') %}
+          <div class="duty-actions">
+            <form method="post" action="{{ url_for('teacher.duty_mark') }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+              <input type="hidden" name="duty_id" value="{{ r.id }}">
+              <input type="hidden" name="done" value="{{ 0 if r.done else 1 }}">
+              <button class="btn btn-xs btn-ghost" type="submit">{{ '撤销' if r.done else '标记完成' }}</button>
+            </form>
+            <form method="post" action="{{ url_for('teacher.duty_remove') }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+              <input type="hidden" name="duty_id" value="{{ r.id }}">
+              <button class="btn btn-xs btn-ghost" type="submit">移除</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <p class="duty-empty">未排班</p>
+        {% endfor %}
+      </div>
+      {% if user.role in ('admin','teacher') %}
+      <form method="post" action="{{ url_for('teacher.duty_assign') }}" class="duty-add">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        <input type="hidden" name="date" value="{{ d.date.isoformat() }}">
+        <select name="user_id">
+          {% for s in students %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-xs btn-ghost" type="submit">＋</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>值日标准</h2></div>
+  <ul class="rule-list">
+    <li>公共区域地面扫清拖净，无纸屑、无积水、不留死角</li>
+    <li>门、玻璃、窗台、桌椅、电脑、打印机擦拭干净，无灰尘污渍</li>
+    <li>开窗通风；卫生用品用完清理干净并放回原位</li>
+    <li>每天下班前清理个人垃圾桶，桌面不留私人物品</li>
+    <li>最后离开的人负责关闭空调、电脑、打印机并锁门</li>
+    <li>无法履行值日义务时，应提前找人代替</li>
+  </ul>
+</section>
+{% endblock %}

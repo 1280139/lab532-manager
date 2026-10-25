@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}532Lab 管理系统{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if user %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') }}">
+    <span class="logo">532</span>
+    <span class="brand-text">532Lab 管理系统</span>
+  </a>
+  <nav class="nav">
+    {% if user.role in ('admin','teacher') %}
+      <a href="{{ url_for('teacher.dashboard') }}" class="{{ 'active' if active == 'dashboard' else '' }}">工作台</a>
+      <a href="{{ url_for('teacher.evaluation') }}" class="{{ 'active' if active == 'evaluation' else '' }}">月度考评</a>
+      <a href="{{ url_for('teacher.duty') }}" class="{{ 'active' if active == 'duty' else '' }}">卫生值日</a>
+      {% if user.role == 'admin' %}
+        <a href="{{ url_for('admin.users') }}" class="{{ 'active' if active == 'admin' else '' }}">系统管理</a>
+      {% endif %}
+    {% else %}
+      <a href="{{ url_for('student.home') }}" class="{{ 'active' if active == 'home' else '' }}">我的考勤</a>
+      <a href="{{ url_for('student.report') }}" class="{{ 'active' if active == 'report' else '' }}">周工作记录</a>
+      <a href="{{ url_for('teacher.duty') }}" class="{{ 'active' if active == 'duty' else '' }}">卫生值日</a>
+    {% endif %}
+  </nav>
+  <div class="userbox">
+    <span class="avatar">{{ user.name[0] }}</span>
+    <span class="uname">{{ user.name }}</span>
+    <span class="pill pill-{{ user.role }}">{{ ROLE_CN[user.role] }}</span>
+    <a class="logout" href="{{ url_for('auth.change_password') }}" title="修改密码">密码</a>
+    <a class="logout" href="{{ url_for('auth.logout') }}">退出</a>
+  </div>
+</header>
+{% endif %}
+
+<main class="container">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      <div class="flash-wrap">
+      {% for cat, m in msgs %}
+        <div class="flash flash-{{ cat }}">{{ m }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+{% if user %}
+<footer class="footer">
+  <span>532Lab 管理系统 · 规则 {{ rule_version }}</span>
+  <span class="muted">{{ rule_source }}</span>
+</footer>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}登录 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-head">
+      <span class="logo logo-lg">532</span>
+      <h1>532Lab 管理系统</h1>
+      <p>考勤 · 周报 · 值日 · 月度考评</p>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}
+        <div class="flash flash-{{ cat }}">{{ m }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" class="login-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>
+        <span>账号</span>
+        <input type="text" name="account" id="account" placeholder="admin / t001 / s001"
+               autocomplete="username" required>
+      </label>
+      <label>
+        <span>密码</span>
+        <input type="password" name="password" id="password" placeholder="请输入密码"
+               autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">登 录</button>
+    </form>
+
+    {% if show_demo %}
+    <div class="demo-accounts">
+      <div class="demo-title">演示账号（点一下自动填入，密码均为 lab532demo）</div>
+      <div class="account-chips">
+        <button type="button" class="chip" data-acc="admin">管理员 · admin</button>
+        <button type="button" class="chip" data-acc="t001">张老师 · t001</button>
+        <button type="button" class="chip" data-acc="s001">张三 · s001</button>
+        <button type="button" class="chip" data-acc="s003">王五 · s003</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if show_demo %}
+<script>
+  document.querySelectorAll('.chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('account').value = b.dataset.acc;
+      document.getElementById('password').value = 'lab532demo';
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}我的考勤 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>我的考勤</h1>
+    <p class="sub">{{ today_str | long_date }} · 考勤时段 8:30—21:00 · {{ current_month | default('') }}{{ month_label(current_month) }}</p>
+  </div>
+  <div class="score-badge">
+    <span class="score-num">{{ att_score | round(1) }}</span>
+    <span class="score-label">本月考勤分</span>
+  </div>
+</div>
+
+<div class="two-col">
+  <section class="card">
+    <div class="card-head">
+      <h2>今日打卡</h2>
+      {% if today_att and today_att.check_in and today_att.check_out %}
+        <span class="tag tag-ok">已完成</span>
+      {% elif today_att and today_att.check_in %}
+        <span class="tag tag-warn">待下班打卡</span>
+      {% else %}
+        <span class="tag tag-idle">未打卡</span>
+      {% endif %}
+    </div>
+
+    {% if today_date.weekday() >= 5 %}
+      <p class="empty">今天是周末，不考勤 🌤</p>
+    {% else %}
+    <div class="checkin-row">
+      <form method="post" action="{{ url_for('student.checkin') }}" class="checkin-form-inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        <input type="hidden" name="action" value="in">
+        <input type="time" name="time" value="{{ today_att.check_in if today_att and today_att.check_in else '08:25' }}">
+        <button class="btn {{ 'btn-ghost' if today_att and today_att.check_in else 'btn-primary' }}" type="submit">
+          {{ '重新记录上班' if today_att and today_att.check_in else '上班打卡' }}
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('student.checkin') }}" class="checkin-form-inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+        <input type="hidden" name="action" value="out">
+        <input type="time" name="time" value="{{ today_att.check_out if today_att and today_att.check_out else '21:05' }}">
+        <button class="btn {{ 'btn-ghost' if today_att and today_att.check_out else 'btn-primary' }}" type="submit">
+          {{ '重新记录下班' if today_att and today_att.check_out else '下班打卡' }}
+        </button>
+      </form>
+    </div>
+    <p class="hint">上班 8:30 后记为迟到，9:30 后为严重迟到；下班早于 21:00 记为早退。</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>本月扣分明细</h2>
+      <span class="muted">初始 100 分</span>
+    </div>
+    {% if att_breakdown %}
+      <table class="table compact">
+        <tbody>
+        {% for st, info in att_breakdown.items() %}
+          <tr>
+            <td><span class="tag tag-{{ 'danger' if info.points >= 5 else 'warn' }}">{{ STATUS_CN.get(st, st) }}</span></td>
+            <td class="num">{{ info.count }} 次</td>
+            <td class="num deduct">−{{ info.points | round(1) }} 分</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">本月暂无扣分，保持 👍</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>本周考勤</h2>
+    <span class="muted">{{ current_week }} · {{ week_range_label(current_week) }}</span>
+  </div>
+  <div class="week-att">
+    {% for c in week_cells %}
+    <div class="att-cell att-{{ c.status }} {{ 'is-today' if c.is_today }}">
+      <div class="att-week">{{ c.date | weekday_cn }}</div>
+      <div class="att-date">{{ c.date | short_date }}</div>
+      <div class="att-status">{{ STATUS_CN.get(c.status, c.status) }}</div>
+      {% if c.row and c.row.check_in %}
+        <div class="att-time">{{ c.row.check_in }} → {{ c.row.check_out or '—' }}</div>
+      {% elif c.is_future %}
+        <div class="att-time">未到</div>
+      {% else %}
+        <div class="att-time">—</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="two-col">
+  <section class="card">
+    <div class="card-head">
+      <h2>申请请假</h2>
+      <span class="muted">需提前 1 天</span>
+    </div>
+    <form method="post" action="{{ url_for('student.leave') }}" class="stack-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+      <label><span>日期</span><input type="date" name="date" required></label>
+      <div class="form-pair">
+        <label><span>类型</span>
+          <select name="kind">
+            <option value="personal">事假（−2 分/半天）</option>
+            <option value="sick">病假（−1 分/半天）</option>
+          </select>
+        </label>
+        <label><span>时长</span>
+          <select name="half">
+            <option value="full">整天</option>
+            <option value="am">上午</option>
+            <option value="pm">下午</option>
+          </select>
+        </label>
+      </div>
+      <label><span>事由</span><input type="text" name="reason" placeholder="如：感冒发烧需就医"></label>
+      <button class="btn btn-primary" type="submit">提交申请</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>补卡</h2>
+      <span class="muted">本月已用 {{ makeup_used }}/{{ makeup_limit }} 次</span>
+    </div>
+    <p class="hint">需在 3 个工作日内申请，每月最多 3 次。</p>
+    <form method="post" action="{{ url_for('student.makeup') }}" class="stack-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+      <label><span>补卡日期</span><input type="date" name="date" required></label>
+      <div class="form-pair">
+        <label><span>上班时间</span><input type="time" name="check_in"></label>
+        <label><span>下班时间</span><input type="time" name="check_out"></label>
+      </div>
+      <button class="btn btn-ghost" type="submit">申请补卡</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>本周工作记录</h2>
+    {% if report %}<span class="tag tag-ok">已提交 · {{ report.word_count }} 字</span>
+    {% else %}<span class="tag tag-warn">未提交</span>{% endif %}
+  </div>
+  {% if report %}
+    <p class="muted">提交于 {{ report.submitted_at }}</p>
+    {% if report.comment %}
+    <div class="feedback-done">
+      <div class="field-label">导师评语</div>
+      <div class="field-text">{{ report.comment }}</div>
+    </div>
+    {% endif %}
+    <a class="btn btn-ghost" href="{{ url_for('student.report') }}">查看 / 修改</a>
+  {% else %}
+    <p class="empty">本周还没提交工作记录，周日晚 24:00 截止。</p>
+    <a class="btn btn-primary" href="{{ url_for('student.report') }}">去填写</a>
+  {% endif %}
+</section>
+{% endblock %}

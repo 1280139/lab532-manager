@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}月度考评 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>月度考评</h1>
+    <p class="sub">
+      S = 考勤分 × 40% + 任务分 × 60% + 赋能分 × 30% · 任务分按
+      {% for b in bands %}{{ (b[3] * 100) | int }}%{% if not loop.last %} / {% endif %}{% endfor %} 强制分布
+    </p>
+  </div>
+  <form method="get" class="inline-select">
+    <input type="month" name="month" value="{{ mk }}" onchange="this.form.submit()">
+  </form>
+</div>
+
+<form method="post" action="{{ url_for('teacher.evaluation_compute') }}" class="compute-bar">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <input type="hidden" name="month" value="{{ mk }}">
+  <div class="compute-hint">
+    <strong>生成考评</strong>
+    <span class="muted">按本月周报提交与字数排名，套用 10/20/30/40 强制分布算出任务分，再合成 S 值与津贴。</span>
+  </div>
+  <button class="btn btn-primary" type="submit">生成 {{ month_label(mk) }} 考评</button>
+</form>
+
+<section class="card">
+  <table class="table eval-table">
+    <thead>
+      <tr>
+        <th>学生</th><th class="num">考勤分</th><th class="num">任务分</th>
+        <th class="num">赋能分</th><th class="num">S 值</th>
+        <th>等级</th><th class="num">比例</th><th class="num">基准</th><th class="num">应发</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>
+          <a class="cell-name" href="{{ url_for('teacher.student_detail', sid=r.u.id) }}">
+            <span class="avatar avatar-sm">{{ r.u.name[0] }}</span>{{ r.u.name }}
+          </a>
+          <div class="muted small">
+            {{ DEGREE_CN.get(r.u.degree, '') }}{% if r.u.assist_type %} · {{ ASSIST_CN.get(r.u.assist_type) }}{% endif %}
+            · 周报 {{ r.n_reports }} 份
+          </div>
+        </td>
+        <td class="num"><span class="att-score {{ 'is-low' if r.att.score < 80 }}">{{ r.att.score | round(1) }}</span></td>
+        <td class="num">
+          {% if r.ev and r.ev.task_score is not none %}
+            <strong>{{ r.ev.task_score | round(1) }}</strong>
+            {% if r.ev.task_score >= 90 %}<span class="tag tag-ok">优</span>
+            {% elif r.ev.task_score >= 80 %}<span class="tag tag-info">良</span>
+            {% elif r.ev.task_score >= 70 %}<span class="tag tag-idle">中</span>
+            {% else %}<span class="tag tag-warn">合</span>{% endif %}
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td class="num">
+          <form method="post" action="{{ url_for('teacher.evaluation_enable', sid=r.u.id) }}" class="inline-num">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <input type="hidden" name="month" value="{{ mk }}">
+            <input type="number" name="enable_score" step="1" min="0" max="500"
+                   value="{{ r.ev.enable_score | round(0) | int if r.ev else 0 }}" onchange="this.form.submit()">
+          </form>
+        </td>
+        <td class="num">{{ r.ev.s_value | round(1) if r.ev and r.ev.s_value is not none else '—' }}</td>
+        <td>
+          {% if r.ev and r.ev.grade %}
+            <span class="grade grade-{{ r.ev.grade }}">{{ r.ev.grade }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="num">{{ (r.ev.ratio * 100) | round(0) | int ~ '%' if r.ev and r.ev.ratio is not none else '—' }}</td>
+        <td class="num">{{ r.ev.base_amount | round(0) | int if r.ev else '—' }}</td>
+        <td class="num">
+          {% if r.ev and r.ev.final_amount is not none %}
+            <strong class="{{ 'amount-zero' if r.ev.final_amount == 0 }}">{{ r.ev.final_amount | round(0) | int }}</strong>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9"><p class="empty">没有学生</p></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>发放比例对照</h2></div>
+  <div class="rule-grid">
+    <div class="rule-col">
+      <div class="rule-title">等级与比例</div>
+      <table class="table compact">
+        <tbody>
+          <tr><td><span class="grade grade-A">A</span> 96-100</td><td class="num">150%</td></tr>
+          <tr><td><span class="grade grade-A">A</span> 90-95</td><td class="num">140%</td></tr>
+          <tr><td><span class="grade grade-A">A</span> 86-89</td><td class="num">120%</td></tr>
+          <tr><td><span class="grade grade-A">A</span> 80-85</td><td class="num">110%</td></tr>
+          <tr><td><span class="grade grade-B">B</span> 76-79</td><td class="num">100%</td></tr>
+          <tr><td><span class="grade grade-B">B</span> 70-75</td><td class="num">90%</td></tr>
+          <tr><td><span class="grade grade-C">C</span> 66-69</td><td class="num">80%</td></tr>
+          <tr><td><span class="grade grade-C">C</span> 60-65</td><td class="num">70%</td></tr>
+          <tr><td><span class="grade grade-D">D</span> 50-59</td><td class="num">60%</td></tr>
+          <tr><td><span class="grade grade-D">D</span> &lt;50 或考勤&lt;50</td><td class="num">0%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="rule-col">
+      <div class="rule-title">基准津贴</div>
+      <table class="table compact">
+        <tbody>
+          <tr><td>博士研究生</td><td class="num">1000 元/月</td></tr>
+          <tr><td>硕士 · I 类助研（学术为主）</td><td class="num">200 元/月</td></tr>
+          <tr><td>硕士 · II 类助研（工程为主）</td><td class="num">500 元/月</td></tr>
+        </tbody>
+      </table>
+      <div class="rule-title" style="margin-top:18px">任务分强制分布</div>
+      <table class="table compact">
+        <tbody>
+          {% for b in bands %}
+          <tr><td>{{ b[0] }}（{{ b[1] }}-{{ b[2] }}）</td><td class="num">占 {{ (b[3] * 100) | int }}%</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

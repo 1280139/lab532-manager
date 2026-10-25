@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}工作台 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>工作台</h1>
+    <p class="sub">{{ today_str | long_date }} · {{ current_week }}（{{ week_range_label(current_week) }}） · {{ month_label(current_month) }}</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('teacher.evaluation') }}">月度考评</a>
+</div>
+
+<div class="stat-grid">
+  <section class="card stat-card">
+    <div class="stat-head">
+      <h2>本周未交周报</h2>
+      <span class="count {{ 'count-warn' if no_report else 'count-ok' }}">{{ no_report | length }}</span>
+    </div>
+    {% if no_report %}
+      <ul class="name-list">
+        {% for s in no_report %}
+          <li><a href="{{ url_for('teacher.student_detail', sid=s.id) }}">
+            <span class="avatar avatar-sm">{{ s.name[0] }}</span>{{ s.name }}
+            <span class="arrow">›</span></a></li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="empty">本周全部已交 👍</p>{% endif %}
+  </section>
+
+  <section class="card stat-card">
+    <div class="stat-head">
+      <h2>今日未打卡</h2>
+      <span class="count {{ 'count-warn' if no_checkin else 'count-ok' }}">{{ no_checkin | length }}</span>
+    </div>
+    {% if no_checkin %}
+      <ul class="name-list">
+        {% for s in no_checkin %}
+          <li><a href="{{ url_for('teacher.student_detail', sid=s.id) }}">
+            <span class="avatar avatar-sm">{{ s.name[0] }}</span>{{ s.name }}
+            <span class="arrow">›</span></a></li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="empty">今天都打了卡 👍</p>{% endif %}
+  </section>
+
+  <section class="card stat-card">
+    <div class="stat-head">
+      <h2>待审批请假</h2>
+      <span class="count {{ 'count-warn' if pending_leaves else 'count-ok' }}">{{ pending_leaves | length }}</span>
+    </div>
+    {% if pending_leaves %}
+      <ul class="name-list">
+        {% for l in pending_leaves %}
+          <li>
+            <span class="avatar avatar-sm">{{ l.name[0] }}</span>{{ l.name }}
+            <span class="meta">{{ l.date | short_date }} {{ '事假' if l.kind == 'personal' else '病假' }}</span>
+            <form method="post" action="{{ url_for('teacher.leave_action', lid=l.id, action='approve') }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+              <button class="btn btn-xs btn-primary" type="submit">同意</button>
+            </form>
+            <form method="post" action="{{ url_for('teacher.leave_action', lid=l.id, action='reject') }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+              <button class="btn btn-xs btn-ghost" type="submit">驳回</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}<p class="empty">没有待审批的请假</p>{% endif %}
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>学生概览</h2>
+    <span class="muted">共 {{ total_students }} 人 · 本月已考评 {{ evaluated }} 人</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>学生</th><th>身份</th><th class="num">本月考勤分</th>
+        <th>今日打卡</th><th>本周周报</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in overview %}
+      <tr>
+        <td>
+          <a class="cell-name" href="{{ url_for('teacher.student_detail', sid=o.u.id) }}">
+            <span class="avatar avatar-sm">{{ o.u.name[0] }}</span>{{ o.u.name }}
+          </a>
+        </td>
+        <td class="muted">
+          {{ DEGREE_CN.get(o.u.degree, '') }}{% if o.u.grade %} · {{ o.u.grade }} 级{% endif %}
+          {% if o.u.assist_type %} · {{ ASSIST_CN.get(o.u.assist_type) }}{% endif %}
+        </td>
+        <td class="num">
+          <span class="att-score {{ 'is-low' if o.att_score < 80 }}">{{ o.att_score | round(1) }}</span>
+        </td>
+        <td>{% if o.checked_in %}<span class="tag tag-ok">已打</span>{% else %}<span class="tag tag-warn">未打</span>{% endif %}</td>
+        <td>{% if o.has_report %}<span class="tag tag-ok">已交</span>{% else %}<span class="tag tag-warn">未交</span>{% endif %}</td>
+        <td class="num"><a class="link" href="{{ url_for('teacher.student_detail', sid=o.u.id) }}">详情</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ stu.name }} · 学生详情{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="head-with-avatar">
+    <span class="avatar avatar-lg">{{ stu.name[0] }}</span>
+    <div>
+      <h1>{{ stu.name }}</h1>
+      <p class="sub">
+        {{ DEGREE_CN.get(stu.degree, '') }}
+        {% if stu.grade %} · {{ stu.grade }} 级{% endif %}
+        {% if stu.assist_type %} · {{ ASSIST_CN.get(stu.assist_type) }}{% endif %}
+        · 账号 {{ stu.account }}
+      </p>
+    </div>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('teacher.dashboard') }}">← 返回工作台</a>
+</div>
+
+<div class="metric-row">
+  <div class="metric {{ 'metric-warn' if att.score < 80 else '' }}">
+    <div class="metric-num">{{ att.score | round(1) }}</div>
+    <div class="metric-label">{{ month_label(current_month) }}考勤分</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">{{ att.total_deduction | round(1) }}</div>
+    <div class="metric-label">本月扣分</div>
+  </div>
+  <div class="metric">
+    <div class="metric-num">{{ reports | length }}</div>
+    <div class="metric-label">近期周报</div>
+  </div>
+  {% if eval_row and eval_row.finalized %}
+  <div class="metric metric-ok">
+    <div class="metric-num metric-text">{{ eval_row.grade }} · {{ (eval_row.ratio * 100) | round(0) | int }}%</div>
+    <div class="metric-label">考评 {{ eval_row.final_amount }} 元</div>
+  </div>
+  {% else %}
+  <div class="metric metric-warn">
+    <div class="metric-num metric-text">未考评</div>
+    <div class="metric-label">本月月度考评</div>
+  </div>
+  {% endif %}
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>本月考勤明细</h2>
+    <span class="muted">{{ month_label(current_month) }} · 初始 100 分</span>
+  </div>
+  {% if att.breakdown %}
+  <div class="breakdown-row">
+    {% for st, info in att.breakdown.items() %}
+      <div class="breakdown-chip">
+        <span class="tag tag-{{ 'danger' if info.points >= 5 else 'warn' }}">{{ STATUS_CN.get(st, st) }}</span>
+        <strong>{{ info.count }}</strong> 次
+        <span class="deduct">−{{ info.points | round(1) }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="cal-grid">
+    {% for row in att.days %}
+      {% if loop.index0 % 7 == 0 %}<div class="cal-row">{% endif %}
+      <div class="cal-cell cal-{{ row.status }} {{ 'cal-future' if row.date > today_date }}"
+           title="{{ row.date }} {{ row.date | weekday_cn }} · {{ STATUS_CN.get(row.status) }}{% if row.note %} · {{ row.note }}{% endif %}">
+        <span class="cal-day">{{ row.date.day }}</span>
+        {% if row.makeup %}<span class="cal-mark">补</span>{% endif %}
+      </div>
+      {% if loop.index0 % 7 == 6 %}</div>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="legend">
+    <span><i class="lg lg-ok"></i>正常</span>
+    <span><i class="lg lg-late"></i>迟到/早退</span>
+    <span><i class="lg lg-miss"></i>缺卡</span>
+    <span><i class="lg lg-abs"></i>缺勤</span>
+    <span><i class="lg lg-leave"></i>请假</span>
+    <span><i class="lg lg-none"></i>周末</span>
+  </div>
+</section>
+
+<div class="two-col">
+  <section class="card">
+    <div class="card-head"><h2>周工作记录</h2></div>
+    <div class="week-list">
+      {% for r in reports %}
+      <details class="week-item">
+        <summary>
+          <span class="wk-label">{{ week_label(r.week_key) }}</span>
+          <span class="wk-range">{{ r.word_count }} 字</span>
+          {% if r.comment %}<span class="tag tag-ok">已评</span>{% else %}<span class="tag tag-warn">待评</span>{% endif %}
+        </summary>
+        <div class="week-body">
+          {% for d, field in [('周一','mon'),('周二','tue'),('周三','wed'),('周四','thu'),('周五','fri')] %}
+            {% if r[field] %}<div class="field"><div class="field-label">{{ d }}</div><div class="field-text">{{ r[field] }}</div></div>{% endif %}
+          {% endfor %}
+          <div class="field"><div class="field-label">本周总结</div><div class="field-text">{{ r.summary }}</div></div>
+          <div class="field"><div class="field-label">下周计划</div><div class="field-text">{{ r.next_plan }}</div></div>
+          {% if r.monthly %}<div class="field"><div class="field-label">本月总结</div><div class="field-text">{{ r.monthly }}</div></div>{% endif %}
+
+          <form method="post" action="{{ url_for('teacher.comment', sid=stu.id) }}" class="feedback-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+            <input type="hidden" name="report_id" value="{{ r.id }}">
+            <div class="field-label">评语</div>
+            <textarea name="comment" rows="2" placeholder="给这条周报留一句反馈…">{{ r.comment or '' }}</textarea>
+            <div class="feedback-actions">
+              <button type="submit" class="btn btn-sm btn-primary">保存评语</button>
+            </div>
+          </form>
+        </div>
+      </details>
+      {% else %}
+      <p class="empty">还没有提交过周报</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>请假记录</h2></div>
+    {% if leaves %}
+    <table class="table compact">
+      <tbody>
+      {% for l in leaves %}
+        <tr>
+          <td>{{ l.date | short_date }}</td>
+          <td>{{ '事假' if l.kind == 'personal' else '病假' }} · {{ {'full':'整天','am':'上午','pm':'下午'}[l.half] }}</td>
+          <td>
+            {% if l.status == 'approved' %}<span class="tag tag-ok">已同意</span>
+            {% elif l.status == 'rejected' %}<span class="tag tag-danger">已驳回</span>
+            {% else %}
+              <span class="tag tag-warn">待审批</span>
+              <form method="post" action="{{ url_for('teacher.leave_action', lid=l.id, action='approve') }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+                <button class="btn btn-xs btn-primary" type="submit">同意</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty">没有请假记录</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

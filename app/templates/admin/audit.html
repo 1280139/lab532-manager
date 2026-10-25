@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}审计日志 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>审计日志</h1>
+    <p class="sub">共 {{ total }} 条 · 记录谁在什么时候做了什么</p>
+  </div>
+  <div class="week-nav">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">用户管理</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.system') }}">系统状态</a>
+  </div>
+</div>
+
+<section class="card">
+  <table class="table">
+    <thead>
+      <tr><th>时间</th><th>用户</th><th>操作</th><th>对象</th><th>详情</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="nowrap muted">{{ r.created_at }}</td>
+        <td>{{ r.name or '（系统）' }}</td>
+        <td><code class="code">{{ r.action }}</code></td>
+        <td class="muted">{{ r.target }}</td>
+        <td class="muted small">{{ r.detail }}</td>
+        <td class="muted small">{{ r.ip }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6"><p class="empty">还没有日志</p></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log', page=page-1) }}">← 上一页</a>{% endif %}
+    <span class="muted">第 {{ page }} / {{ pages }} 页</span>
+    {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log', page=page+1) }}">下一页 →</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

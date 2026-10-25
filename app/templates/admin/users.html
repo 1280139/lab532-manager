@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}系统管理 · 532Lab{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>系统管理</h1>
+    <p class="sub">用户、审计日志、备份</p>
+  </div>
+  <div class="week-nav">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">用户管理</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log') }}">审计日志</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.system') }}">系统状态</a>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>创建用户</h2></div>
+  <form method="post" action="{{ url_for('admin.user_create') }}" class="form-row">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label><span>姓名</span><input type="text" name="name" required></label>
+    <label><span>账号</span><input type="text" name="account" required></label>
+    <label><span>初始密码</span><input type="password" name="password" placeholder="至少 8 位" required></label>
+    <label><span>角色</span>
+      <select name="role">
+        <option value="student">学生</option>
+        <option value="teacher">导师</option>
+        <option value="admin">管理员</option>
+      </select>
+    </label>
+    <label><span>学位</span>
+      <select name="degree">
+        <option value="">（不适用）</option>
+        <option value="master">硕士</option>
+        <option value="phd">博士</option>
+      </select>
+    </label>
+    <label><span>助研类型</span>
+      <select name="assist_type">
+        <option value="">（不适用）</option>
+        <option value="I">I 类（学术）</option>
+        <option value="II">II 类（工程）</option>
+      </select>
+    </label>
+    <label><span>年级</span><input type="text" name="grade" placeholder="2025"></label>
+    <label><span>导师</span>
+      <select name="advisor_id">
+        <option value="">（无）</option>
+        {% for t in teachers %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-primary" type="submit">创建</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>用户列表</h2>
+    <span class="muted">共 {{ rows | length }} 人</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr><th>姓名</th><th>账号</th><th>角色</th><th>身份</th><th>状态</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{{ 'row-muted' if not r.active }}">
+        <td><strong>{{ r.name }}</strong></td>
+        <td class="muted">{{ r.account }}</td>
+        <td><span class="tag tag-{{ 'info' if r.role == 'admin' else ('ok' if r.role == 'teacher' else 'idle') }}">{{ ROLE_CN[r.role] }}</span></td>
+        <td class="muted">
+          {{ DEGREE_CN.get(r.degree, '') }}{% if r.grade %} · {{ r.grade }} 级{% endif %}
+          {% if r.assist_type %} · {{ ASSIST_CN.get(r.assist_type) }}{% endif %}
+        </td>
+        <td>{% if r.active %}<span class="tag tag-ok">启用</span>{% else %}<span class="tag tag-idle">停用</span>{% endif %}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.user_reset', uid=r.id) }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input type="password" name="password" placeholder="新密码" style="width:110px;padding:3px 7px;font-size:12px">
+            <button class="btn btn-xs btn-ghost" type="submit">重置</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.user_toggle', uid=r.id) }}" class="inline-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn btn-xs btn-ghost" type="submit">{{ '停用' if r.active else '启用' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
